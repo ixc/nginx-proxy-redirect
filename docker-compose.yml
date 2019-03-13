@@ -1,23 +1,11 @@
 version: '2.4'
 
-networks:
-  traefik:
-    external: true
-
 services:
   nginx-proxy-redirect:
     build: .
     environment:
       CLIENT_MAX_BODY_SIZE: 10m
       WORKER_PROCESSES: 1
-    expose:
-      - 80
     image: interaction/nginx-proxy-redirect:local
-    labels:
-      traefik.enable: true
-      traefik.frontend.rule: Host:foo.lvh.me,bar.lvh.me,baz.lvh.me,www.bar.lvh.me,www.baz.lvh.me,httpbin.lvh.me
-    networks:
-      - traefik
     volumes:
-      # - ./config.yml:/opt/nginx-proxy-redirect/config.yml
       - .:/opt/nginx-proxy-redirect

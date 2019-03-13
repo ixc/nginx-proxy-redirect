@@ -1,1 +1,2 @@
-etc/nginx.conf
+data/conf.d/
+data/nginx.conf
