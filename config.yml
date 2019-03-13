@@ -1,0 +1,18 @@
+- server_name: foo.lvh.me *.bar.lvh.me ~^(www\.)?baz.lvh.me
+  client_max_body_size: 500m
+  locations:
+  - rule: ~* ^/(spam|ham)(.*)
+    url: http://$1.lvh.me$2
+    permanent: true
+  - url: https://httpbin.org/
+    proxy: true
+- server_name: httpbin.lvh.me
+  locations:
+  - url: https://httpbin.org$request_uri
+
+# http://foo.lvh.me/spam            301 http://spam.lvh.me
+# http://bar.lvh.me/ham/eggs        301 http://ham.lvh.me/eggs
+# http://baz.lvh.me/status/418      418 I'm a teapot
+# http://www.bar.lvh.me/headers     200 OK
+# http://www.baz.lvh.me/ip          200 OK
+# http://httpbin.lvh.me/user-agent  302 https://httpbin.org/user-agent
