@@ -18,7 +18,7 @@ Each location can be configured to reverse proxy, 301 permanent redirect, or 302
         url:                   # Nginx `proxy_pass` or `return` directive.
         permanent:             # Return 301 permanent (true) or 302 temporary (false) redirect.  Default: false
         proxy:                 # Reverse proxy (true) or redirect (false).                       Default: false
-        proxy_host:            # Set Host header for proxy requests.                             Default: $http_host
+        proxy_hostname:        # Set Host header for proxy requests.                             Default: $http_host
 
 Keys with default values can be omitted.
 
@@ -43,7 +43,7 @@ Some nginx config is hard coded:
 - Gzip is enabled for common text formats.
 - Websockets are supported.
 - Pass headers: `X-Forwarded-Proto`.
-- Set headers: `Host`, `X-Forwarded-For`.
+- Set headers: `X-Forwarded-For`.
 - Get real IP from trusted proxies (with private IP addresses).
 
 
