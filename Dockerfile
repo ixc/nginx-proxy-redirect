@@ -2,15 +2,13 @@
 # explicitly set ${DOCKERIZE_ARCH} in a base image for each platform.
 
 FROM alpine:3.9 as base-amd64
-ENV DOCKERIZE_ARCH=x64
+ENV DOCKERIZE_ARCH=amd64
 
 FROM alpine:3.9 as base-arm64
 ENV DOCKERIZE_ARCH=armhf
 
 FROM base-${TARGETARCH}
 ARG TARGETARCH
-
-FROM alpine:3.9
 
 RUN apk update \
     && apk upgrade \
