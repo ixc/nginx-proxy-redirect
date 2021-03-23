@@ -61,3 +61,10 @@ jobs:
             --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-arm64 \
             --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-x64
           docker manifest push ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}
+      - name: Create and Push Manifest List (latest)
+        if: github.ref == 'refs/heads/master'
+        run: |
+          docker manifest create ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:latest \
+            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-arm64 \
+            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-x64
+          docker manifest push ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:latest
