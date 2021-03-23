@@ -1,3 +1,6 @@
+# Dockerize releases use a different label for arm64 than ${TARGETARCH}, so we need to
+# explicitly set ${DOCKERIZE_ARCH} in a base image for each platform.
+
 FROM alpine:3.9 as base-amd64
 ENV DOCKERIZE_ARCH=x64
 
