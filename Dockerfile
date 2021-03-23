@@ -19,7 +19,8 @@ RUN apk update \
         tini \
     && rm -rf /var/cache/apk/*
 
-ENV DOCKERIZE_VERSION=0.6.1
+# Do NOT use dockerize 0.6.1 due to https://github.com/jwilder/dockerize/issues/125
+ENV DOCKERIZE_VERSION=0.6.0
 RUN wget -nv -O - "https://github.com/jwilder/dockerize/releases/download/v${DOCKERIZE_VERSION}/dockerize-linux-${DOCKERIZE_ARCH}-v${DOCKERIZE_VERSION}.tar.gz" | tar -xz -C /usr/local/bin/ -f -
 
 RUN pip install --no-cache-dir yq
