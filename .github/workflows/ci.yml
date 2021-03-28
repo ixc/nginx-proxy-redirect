@@ -2,9 +2,8 @@ name: Continuous Integration
 
 on:
   push:
-    branches: '*'
   schedule:
-    - cron:  '0 17 * * *'
+    - cron:  '0 17 * * *'  # 3 AM AEST
 
 jobs:
   image:
@@ -13,16 +12,13 @@ jobs:
       - linux
       - self-hosted
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
+      - uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and Push Image
-        uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v2
         with:
+          no-cache: ${{ github.event_name == 'schedule' }}
           push: true
           tags: ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-${{ matrix.arch }}
     strategy:
@@ -32,39 +28,52 @@ jobs:
           - x64
 
   manifest:
+    env:
+      IMAGE_REPO: ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}
+      IMAGE_TAG: sha-${{ github.sha }}
     needs: image
     runs-on:
       - linux
       - self-hosted
     steps:
-      # Transform ${{ git.ref }} from `refs/heads/<branch_name>` to `${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:<branch_name>`.
-      - name: Docker Meta
-        id: docker_meta
-        uses: crazy-max/ghaction-docker-meta@v1
-        with:
-          images: ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}
-          tag-latest: false
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
+      - uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Create Manifest List (Branch)
+      - name: Push branch manifest list
         run: |
-          docker manifest create ${{ steps.docker_meta.outputs.tags }} \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-arm64 \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-x64
-          docker manifest push ${{ steps.docker_meta.outputs.tags }}
-      - name: Create Manifest List (SHA)
+          docker buildx imagetools create -t \
+            ${{ env.IMAGE_REPO }}:${GITHUB_REF#refs/heads/} \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-arm64 \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-x64
+      - name: Push SHA manifest list
         run: |
-          docker manifest create ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }} \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-arm64 \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-x64
-          docker manifest push ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}
-      - name: Create and Push Manifest List (latest)
+          docker buildx imagetools create -t \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }} \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-arm64 \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-x64
+      - name: Push latest manifest list
         if: github.ref == 'refs/heads/master'
         run: |
-          docker manifest create ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:latest \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-arm64 \
-            --amend ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:sha-${{ github.sha }}-x64
-          docker manifest push ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}:latest
+          # Latest.
+          docker buildx imagetools create -t \
+            ${{ env.IMAGE_REPO }}:latest \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-arm64 \
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-x64
+      - name: Remove arch tags
+        run: |
+          TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "${{ secrets.DOCKER_USERNAME }}", "password": "${{ secrets.DOCKER_PASSWORD }}"}' "https://hub.docker.com/v2/users/login/" | jq -r '.token')
+          curl "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}/tags/${{ env.IMAGE_TAG }}-arm64/" -X DELETE -H "Authorization: JWT ${TOKEN}"
+          curl "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}/tags/${{ env.IMAGE_TAG }}-x64/" -X DELETE -H "Authorization: JWT ${TOKEN}"
+
+  readme:
+    needs: manifest
+    runs-on:
+      - self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: peter-evans/dockerhub-description@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ${{ secrets.DOCKER_ORG }}/${{ secrets.DOCKER_REPO }}
